@@ -1,8 +1,8 @@
 const gameconfig = {
     type: Phaser.AUTO,
     parent: 'game',
-    width: 3000,
-    heigth: 2000,
+    width: 4000,
+    heigth: 4000,
     scale: {
         autoCenter: Phaser.Scale.CENTER_BOTH
     },

@@ -11,6 +11,10 @@ class scene extends Phaser.Scene {
     this.load.image('spike', 'assets/images/spike.png');
     this.load.image('move', 'assets/images/mouvable.png');
     this.load.image('save', 'assets/images/Save.png');
+    this.load.image('enemy', 'assets/images/enemy.png');
+    this.load.image('sword', 'assets/images/sword.png');
+    this.load.image('lianne', 'assets/images/lianne.png');
+    this.load.image('luciole1', 'assets/images/luciole.png');
     // At last image must be loaded with its JSON
     this.load.atlas('player', 'assets/images/kenney_player.png', 'assets/images/kenney_player_atlas.json');
     this.load.image('tiles', 'assets/tilesets/platformPack_tilesheet.png');
@@ -33,7 +37,7 @@ class scene extends Phaser.Scene {
      */
 
     const backgroundImage = this.add.image(0, 0, 'background').setOrigin(0, 0);
-    backgroundImage.setScale(2, 0.8);
+    backgroundImage.setScale(2);
     const map = this.make.tilemap({key: 'map'});
     const tileset = map.addTilesetImage('kenny_simple_platformer', 'tiles');
     this.platforms = map.createStaticLayer('Platforms', tileset, 0, 200);
@@ -53,7 +57,6 @@ class scene extends Phaser.Scene {
     map.getObjectLayer('Door').objects.forEach((doors)=>{
       const DoorSprite = this.doors.create(doors.x, doors.y +9+ doors.height, 'door').setOrigin(0).key=1;
     });
-    this.debug=this.doors.children.entries[1].key=3//cette porte nécessite 3 clefs
 
 /** groupe des clefs */
     this.key=this.physics.add.group({
@@ -80,7 +83,23 @@ class scene extends Phaser.Scene {
     this.physics.add.collider(this.moves, this.moveSprite)
     this.physics.add.collider(this.moves, this.platforms)
 
-    this.player = new Player(this)
+    this.player = new Player(this);
+
+    this.enemy = new Enemy(this, 1200, 900, 'enemy');
+    this.physics.add.collider(this.enemy, this.platforms);
+    this.physics.add.collider(this.enemy, this.player.player);
+
+    this.sword = new Sword(this, 0, 0, 'sword');
+    this.physics.add.collider(this.sword, this.enemy);
+    this.swordGameplay();
+
+    this.lianne = new Lianne(this, 2365, 1050, 'lianne');
+    this.physics.add.overlap(this.player.player, this.lianne,this.touch.bind(this),null,this);
+
+    this.rightDown=true;
+    this.leftDown=true;
+    this.downDown=true;
+
 /** gorupe des trou*/
 this.trous = this.physics.add.group({
     allowGravity: false,
@@ -106,7 +125,16 @@ this.trous = this.physics.add.group({
     this.cursors = this.input.keyboard.createCursorKeys();
     this.cameras.main.startFollow(this.player.player);
 
-
+      this.configFX1 = {
+          rotate: {min:0,max:360},
+          scale: {start: 0.2, end: 0.1},
+          alpha: { start: 1, end: 0 },
+          blendMode: Phaser.BlendModes.ADD,
+          speed:12
+      };
+      this.fx = this.add.particles('luciole1')//On charge les particules à appliquer au layer
+      this.fx.createEmitter(this.configFX1)
+      this.fx.setPosition(600, 1100);
   }
 
   /**
@@ -138,6 +166,38 @@ this.trous = this.physics.add.group({
     });
   }
 
+  swordGameplay(){
+      this.input.on('pointerdown', function (pointer) {
+          //On rend l'épée visible
+          this.sword.setVisible(true);
+          //On active le body de l'épée
+          this.sword.enableBody()
+          //On ajoute un event avec un delay qui fera disparaitre l'épée pendant 250 ms
+          this.time.addEvent({ delay: 250, callback: this.onEvent, callbackScope: this });
+
+      }, this);
+
+      let me = this;
+      //On enleve des points de vie a l'enemie qu'on touche
+      this.physics.add.overlap(this.sword, this.enemy, function (){
+          me.enemy.hp -= me.sword.attack;
+      })
+  }
+
+  //Event qui permet de faire disparaitre l'épée
+    onEvent()
+    {
+        this.sword.disableBody()
+        this.sword.setVisible(false);
+    }
+
+    touch(player, lianne){
+        if (this.cursors.space.isDown || this.cursors.up.isDown){
+            this.player.player.setVelocityY(-100);
+            this.player.player.body.setAllowGravity(true);
+        }
+    }
+
 
   update() {
       if (this.player.pousse ){
@@ -147,19 +207,61 @@ this.trous = this.physics.add.group({
           this.moves.setVelocityX(0)
       }
 
+      this.sword.x = this.player.player.x+50;
+      this.sword.y = this.player.player.y;
+
+      //console.log(this.player.player.body.x)
+      //console.log(this.player.player.body.y)
+
+      if(this.enemy.hp <= 0){
+          this.enemy.disableBody()
+          this.enemy.setVisible(false)
+      }
+
+      if(this.player.player.onlianne){
+          this.player.player.onlianne=false
+          if (this.upDown){
+              this.player.player.setVelocityY(-100);
+              this.player.player.body.setAllowGravity(true);
+          }
+          else if (this.downDown){
+              this.player.player.setVelocityY(100);
+              this.player.player.body.setAllowGravity(true);
+          }
+          else{
+              this.player.player.setVelocityY(0);
+              this.player.player.body.setAllowGravity(false);
+
+          }
+      }
+      if (!this.player.player.onlianne){
+          if (this.downDown || this.upDown || this.rightDown || this.leftDown){
+              this.player.player.body.setAllowGravity(true);
+          }
+      }
+
 
 
 
     if ((this.cursors.space.isDown || this.cursors.up.isDown) && this.player.player.body.onFloor()) {
-      this.player.jump()
+      this.player.jump();
+      this.upDown=true;
       console.log("oui")
+    }else if(this.cursors.up.isUp){
+        this.upDown=false;
     }
     if (this.cursors.left.isDown) {
-      this.player.moveLeft()
+        this.leftDown = true;
+        this.player.moveLeft()
     } else if (this.cursors.right.isDown) {
-      this.player.moveRight()
-    } else {
-      this.player.stop();
+        this.rightDown = true;
+        this.player.moveRight()
+    }else if(this.cursors.down.isDown) {
+        this.downDown = true;
+    }else {
+        this.player.stop();
     }
+
+    console.log(this.player.player.onlianne)
   }
 }

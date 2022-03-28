@@ -4,7 +4,7 @@ class tiled {
     }
     createtiled() {
         const backgroundImage = this.add.image(0, 0, 'background').setOrigin(0, 0);
-        backgroundImage.setScale(2, 0.8);
+        backgroundImage.setScale(1);
         const map = this.make.tilemap({key: 'map'});
         const tileset = map.addTilesetImage('kenny_simple_platformer', 'tiles');
         this.platforms = map.createStaticLayer('Platforms', tileset, 0, 200);
